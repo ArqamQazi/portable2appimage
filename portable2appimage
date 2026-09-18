@@ -1,6 +1,6 @@
 #!/bin/sh
 
-P2AVER="1.1.5"
+P2AVER="1.2.0"
 
 FILE="$1"
 
@@ -26,6 +26,7 @@ if echo "$2" | grep -q "|"; then
 	UPINFO="$2"
 fi
 [ -z "$APP" ] && APP="$FILE"
+[ -n "$4" ] && UPINFO="$4"
 
 APPDIR="$APP.AppDir"
 
@@ -207,7 +208,7 @@ elif test -f ../../*.desktop; then
 elif test -f ../*.desktop; then
 	cp ../*.desktop ./"$APP.desktop" 2>/dev/null
 elif [ -n "$DESKTOP_FILE" ]; then
-	cp "$DESKTOP_FILE" ./
+	cp "$DESKTOP_FILE" ./"$APP.desktop"
 else
 	cat <<-HEREDOC >> "$APP.desktop"
 	[Desktop Entry]
@@ -219,6 +220,7 @@ else
 	Categories=Utility;
 	HEREDOC
 fi
+for d in ./*.desktop; do [ "$d" != "./$APP.desktop" ] && rm -f "$d"; done
 
 # Add icon
 # Get icon name from .desktop file (strip path, extension, and prefix)
@@ -250,6 +252,8 @@ if [ -z "$icon_found" ]; then
 	fi
 fi
 
+[ ! -e .DirIcon ] && cp "$(find . -maxdepth 1 \( -name "*.png" -o -name "*.svg" \) | head -1)" .DirIcon 2>/dev/null || printf '\x89PNG\r\n\x1a\n' > .DirIcon
+
 cd .. || exit 1
 
 ################################################
@@ -259,7 +263,7 @@ cd .. || exit 1
 _appimagetool() {
 	if ! command -v appimagetool >/dev/null; then
 		if [ ! -f ./appimagetool ]; then
-			_use_online_downloader https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"$(uname -m)".AppImage ./appimagetool
+			_use_online_downloader "https://github.com/pkgforge-dev/appimagetool/releases/latest/download/appimagetool-full-$(uname -m)-linux" ./appimagetool
 		fi
 		chmod a+x ./appimagetool
 		./appimagetool "$@"
@@ -269,16 +273,15 @@ _appimagetool() {
 }
 
 [ -z "$arch" ] && arch=$(uname -m)
+case "$arch" in amd64) appimage_arch="x86_64" ;; arm64) appimage_arch="aarch64" ;; *) appimage_arch="$arch" ;; esac
 
 _export_to_appimage() {
-	if [ -n "$4" ]; then
-		UPINFO="gh-releases-zsync|$4|*$arch.AppImage.zsync"
-		ARCH="$arch" VERSION="$VERSION" _appimagetool "$APPDIR" 2>&1
-	elif [ -n "$UPINFO" ]; then
-		UPINFO="gh-releases-zsync|$UPINFO|*$arch.AppImage.zsync"
-		ARCH="$arch" VERSION="$VERSION" _appimagetool -u "$UPINFO" "$APPDIR" 2>&1
+	[ "$appimage_arch" != "$(uname -m)" ] && [ -x /tmp/mkdwarfs ] && export PATH="/tmp:$PATH"
+	if [ -n "$UPINFO" ]; then
+		echo "$UPINFO" | grep -q "^gh-releases-zsync|" || UPINFO="gh-releases-zsync|$UPINFO|*$arch.AppImage.zsync"
+		APPIMAGE_ARCH="$appimage_arch" ARCH="$arch" VERSION="$VERSION" APPNAME="$APP" _appimagetool -u "$UPINFO" "$APPDIR" 2>&1
 	else
-		ARCH="$arch" VERSION="$VERSION" _appimagetool -u "$UPINFO" "$APPDIR" 2>&1
+		APPIMAGE_ARCH="$appimage_arch" ARCH="$arch" VERSION="$VERSION" APPNAME="$APP" _appimagetool "$APPDIR" 2>&1
 	fi
 }
 
@@ -313,6 +316,7 @@ while ! ls ./*.AppImage >/dev/null 2>&1; do
 	{print}
 	' "$APPDIR"/*.desktop > "$APP.tmp" && mv "$APP.tmp" "$APPDIR"/*.desktop
 	_export_to_appimage 2>/dev/null
+	break
 done
 
 if ! ls ./*.AppImage >/dev/null 2>&1; then

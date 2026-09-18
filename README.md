@@ -83,19 +83,21 @@ In this example, linuxtoys:
 https://github.com/user-attachments/assets/2145ac2b-3136-41c5-97ef-05f96c0aa0f7
 
 ### Create AppImages for more architectures
-Regardless of your architecture, you can use `appimagetool` to create AppImage packages for multiple architectures (provided the executables are compatible with those architectures).
+Regardless of your architecture, you can use `appimagetool` (from https://github.com/pkgforge-dev/appimagetool) to create AppImage packages for multiple architectures using DWARFS compression and [uruntime](https://github.com/VHSgunzo/uruntime) (provided the executables are compatible with those architectures).
+
+Supported 64-bit architectures include `x86_64`, `aarch64`, `riscv64`, `loongarch64`, `ppc64`, and `ppc64le`.
 
 To do this with portable2appimage, you need to export the $arch variable.
 
-Let suppose that we want to create an AppImage for arm64/aarch. Run the following command before:
+Let suppose that we want to create an AppImage for arm64/aarch64. Run the following command before:
 ```
 export arch=aarch64
 ```
-Same, if we want to create an AppImage for the old 32-bit/i386/i486/i586/i686 architecture:
+Same, if we want to create an AppImage for riscv64:
 ```
-export arch=i686
+export arch=riscv64
 ```
-If you want to create an AppImage for a program for x86_64/amd64 from one of the architectures mentioned above, use this command.
+If you want to create an AppImage for a program for x86_64/amd64 from one of the architectures mentioned above, use this command:
 ```
 export arch=x86_64
 ```
